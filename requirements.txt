@@ -1,0 +1,8 @@
+librosa
+torch==2.4.1
+pyannote.audio
+gradio==4.44.0
+transformers==4.44.2
+soundfile
+pyctcdecode==0.5.0
+https://github.com/kpu/kenlm/archive/master.zip
