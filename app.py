@@ -21,6 +21,13 @@ from config import output_dir, MAX_DUR, ASR_MODEL, SPEECH_LABEL, LM_PATH, device
 from tasks.sd import pyannote_sd
 from tasks.vad import pyannote_vad
 from tasks.asr import wav2vec_asr
+
+
+if len(sys.argv) == 2:
+    shareable=bool(int(sys.argv[1]))
+else:
+    shareable = False
+
     
     
 def load_asr(params=None):
@@ -160,7 +167,7 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 
 
 
-with gr.Blocks(theme=gr.themes.Soft()) as gui:
+with gr.Blocks(title="SpeechGrid", theme=gr.themes.Soft()) as gui:
 
     record_audio = gr.Audio(sources=["microphone","upload"], type="filepath")
 
@@ -179,4 +186,4 @@ with gr.Blocks(theme=gr.themes.Soft()) as gui:
     
     
      
-gui.launch()
+gui.launch(share=shareable)
