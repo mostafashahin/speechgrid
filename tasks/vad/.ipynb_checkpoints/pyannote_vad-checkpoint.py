@@ -10,10 +10,12 @@ from pyannote.audio import Model
 
 
 class speech_detection:
-    def __init__(self,Model_path, params = None):
+    def __init__(self,Model_path, device = torch.device('cpu'), params = None):
+        self.device = device
         model = Model.from_pretrained(Model_path)
         self.pipeline = VoiceActivityDetection(segmentation=model)
         self.pipeline.instantiate(params)
+        self.pipeline.to(device)
         
     def DoVAD(self, speech, sr):
         self.duration = librosa.get_duration(y=speech, sr=sr)

@@ -17,6 +17,8 @@ from gradio.components import Audio, Dropdown, Textbox, Image
 import txtgrid_master.TextGrid_Master as tm
 from core.utils import generate_file_basename, load_speech_file, zip_files
 from config import output_dir, MAX_DUR, ASR_MODEL, SPEECH_LABEL, LM_PATH, device
+from config import setup_logger
+import logging
 
 from tasks.sd import pyannote_sd
 from tasks.vad import pyannote_vad
@@ -29,14 +31,18 @@ else:
     shareable = False
 
     
-    
+
+setup_logger()
+logger = logging.getLogger(__name__)
+
 def load_asr(params=None):
     #TODO add to the asr class to read parameters and load the correct model? or a separate function
+    logger.info("Loading ASR Model...")
 
     try:
         asr_engine = wav2vec_asr.speech_recognition(ASR_MODEL, device= device, lm_model_path=LM_PATH) #This from parameters and has default one #If language not determine use language id
     except:
-        print(f'Error loading asr model {ASR_MODEL}')
+        logger.exception(f'Error loading asr model {ASR_MODEL}')
         raise "Error in loading asr model"
     
     return asr_engine
@@ -44,9 +50,10 @@ def load_asr(params=None):
 
 
 def load_sd(params=None):
+    logger.info("Loading SD Model...")
     
     try:
-        diarizer = pyannote_sd.speaker_diar()
+        diarizer = pyannote_sd.speaker_diar(device= device)
     except Exception as e:
         print(f'Error loading speaker diarization model')
         raise f"Error in loading speaker diarization model {e}"
@@ -61,9 +68,11 @@ vad_params = {
              }
 
 def load_vad(params=None):
+    logger.info("Loading VAD Model...")
+    
     model_path = 'Models/VAD/pytorch_model.bin'
     try:
-        vad_pipeline = pyannote_vad.speech_detection(model_path, params)
+        vad_pipeline = pyannote_vad.speech_detection(model_path, device= device, params=params)
     except:
         print(f'Error loading voice activity detection model {model_path}')
         raise "Error in loading voice activity detection model"   
