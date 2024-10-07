@@ -82,11 +82,8 @@ def load_vad(params=None):
 def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.Progress()):
     basename = generate_file_basename()
     
-    speech, sr, duration = load_speech_file(speech_file)
+
     
-    #This save a version of the speech file with 16k, mono, 16bit
-    speech_file = join(output_dir,f'{basename}.wav')
-    sf.write(speech_file, speech, sr)
     
     tasks = set(tasks)
     
@@ -105,7 +102,7 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
     else:
         task_pipeline = tasks #Only 'SD' and 'VAD' each one will be applied separetly
 
-    #print(speech_file, tasks, duration)
+    #Loading task engines
     if 'ASR' in task_pipeline:
         asr_engine = load_asr()
     
@@ -116,11 +113,42 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
         vad_engine = load_vad(params=vad_params)
     
     out_textgrid = []
-    
+
+
+    num_processes = len(task_pipeline)+1
+
     i = 0
+    progress(i/(num_processes+1), desc=f"Loading Speech File...")
+    i+=1
+
+
+    logger.info('Loading Speech File...')
+
+    try:
+        speech, sr, duration = load_speech_file(speech_file)
+    except Exception as e:
+        logger.exception(f'Failed to load the speech file {speech_file}, {e}')
+        raise
+    
+    #This save a version of the speech file with 16k, mono, 16bit
+    try:
+        speech_file = join(output_dir,f'{basename}.wav')
+        sf.write(speech_file, speech, sr)
+        download_speech_enable = True
+        download_speech_value = speech_file
+        download_speech_label = f"Download speech file"
+    except Exception as e:
+        logger.exception(f'Failed to save the speech file {speech_file}, {e}')
+        download_speech_enable = False
+        download_speech_value = None
+        download_speech_label = "Error in saving speech file"
+    
+    
+    
     for task in task_pipeline:
-        progress(i/(len(task_pipeline)+1), desc=f"Applying {task}")
-        i = i+1
+        logger.info(f'Applying {task}')
+        progress(i/(num_processes+1), desc=f"Applying {task}")
+        i += 1
         if task == 'ASR':
             texgrid_file = join(output_dir,f'{basename}_ASR.TextGrid')
             if not out_textgrid:
@@ -151,13 +179,35 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
     
     output_zip_file = join(output_dir,f'{basename}_output.zip')
     
-    progress(len(task_pipeline)/(len(task_pipeline)+1), desc=f"Create output archive")
-    p = zip_files(out_textgrid, output_zip_file)
+    progress(num_processes/(num_processes+1), desc=f"Create output archive")
     
-    progress(1, desc=p)
+    try:
+        p = zip_files(out_textgrid, output_zip_file)
+        download_data_enable = True
+        download_data_value = output_zip_file
+        download_data_label = f"Download output file"
+   
+    except Exception as e:
+        logger.exception(f'Failed to create output archive in {output_zip_file}, {e}')
+        #Disable Download Data Button
+        download_data_enable = False
+        download_data_value = None
+        download_data_label = "Error in archiving data"
+        
+        
+     
+    progress(1, desc="Processing completed..")
     
-    return [p, gr.DownloadButton(label=f"Download output file", value=output_zip_file, visible=True), 
-           gr.DownloadButton(label=f"Download speech file", value=speech_file, visible=True)]
+    return ["Processing completed..", 
+            gr.DownloadButton(label=download_data_label,
+                              value=download_data_value,
+                              interactive=download_data_enable,
+                              visible=True),
+            
+            gr.DownloadButton(label=download_speech_label,
+                              value=download_speech_value,
+                              interactive=download_speech_enable,
+                              visible=True)]
 
     
     
@@ -168,11 +218,14 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 #TODO: Download button  ######DONE
 #TODO: Wrape in a docker #####DONE
 #TODO: Test pyannote offline  ########DONE
-#TODO: Logging of errors and info
-#TODO: ASR with LM
+#TODO: Logging of errors and info    #########IN PROGRESS
+#TODO: ASR with LM  ########DONE
 #TODO: Process batch
 #TODO: Kaldi ASR
 #TODO: MMS ASR
+#TODO: Rewrite the textgrid
+#TODO: TextGrid code to get the logger and use logging instead of print.
+#TODO: Add logging to other packages
 
 
 
