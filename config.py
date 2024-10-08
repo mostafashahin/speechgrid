@@ -17,7 +17,8 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Define constants and configurations
 MAX_DUR = 120  # 2 minutes
-ASR_MODEL = os.path.join(os.getcwd(), 'Models/ASR/wav2vec2-large-xlsr-53-english/')
+#ASR_MODEL = os.path.join(os.getcwd(), 'Models/ASR/wav2vec2-large-xlsr-53-english/')
+ASR_MODEL = os.path.join(os.getcwd(), 'Models/ASR/mms-1b-all')
 LM_PATH = os.path.join(os.getcwd(), 'Models/ASR/LM/ngram/4gram_big.arpa')
 SPEECH_LABEL = 'speech'
 

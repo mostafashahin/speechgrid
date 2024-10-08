@@ -5,10 +5,15 @@ import torch
 
 
 class speech_recognition:
-    def __init__(self,model_id, device = torch.device('cpu'), lm_model_path=None):
+    def __init__(self,model_id, device = torch.device('cpu'), lm_model_path=None, lang='eng'):
         self.device = device
         self.processor = Wav2Vec2Processor.from_pretrained(model_id)
         self.model = Wav2Vec2ForCTC.from_pretrained(model_id)
+        
+        if 'mms' in model_id:
+            self.model.load_adapter(target_lang=lang, local_files_only=True)
+            self.processor.tokenizer.set_target_lang(lang)
+        
         self.model.to(self.device)
         self.lm_decode = None
         if lm_model_path:

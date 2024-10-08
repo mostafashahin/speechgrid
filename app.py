@@ -83,7 +83,15 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
     basename = generate_file_basename()
     
 
+    progress(0, desc=f"Loading Speech File...")
     
+    logger.info('Loading Speech File...')
+
+    try:
+        speech, sr, duration = load_speech_file(speech_file)
+    except Exception as e:
+        logger.exception(f'Failed to load the speech file {speech_file}, {e}')
+        raise
     
     tasks = set(tasks)
     
@@ -102,6 +110,8 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
     else:
         task_pipeline = tasks #Only 'SD' and 'VAD' each one will be applied separetly
 
+    logger.info('Start processing, following tasks will be performed', ','.join(task_pipeline))
+
     #Loading task engines
     if 'ASR' in task_pipeline:
         asr_engine = load_asr()
@@ -116,35 +126,9 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 
 
     num_processes = len(task_pipeline)+1
-
-    i = 0
-    progress(i/(num_processes+1), desc=f"Loading Speech File...")
-    i+=1
-
-
-    logger.info('Loading Speech File...')
-
-    try:
-        speech, sr, duration = load_speech_file(speech_file)
-    except Exception as e:
-        logger.exception(f'Failed to load the speech file {speech_file}, {e}')
-        raise
-    
-    #This save a version of the speech file with 16k, mono, 16bit
-    try:
-        speech_file = join(output_dir,f'{basename}.wav')
-        sf.write(speech_file, speech, sr)
-        download_speech_enable = True
-        download_speech_value = speech_file
-        download_speech_label = f"Download speech file"
-    except Exception as e:
-        logger.exception(f'Failed to save the speech file {speech_file}, {e}')
-        download_speech_enable = False
-        download_speech_value = None
-        download_speech_label = "Error in saving speech file"
     
     
-    
+    i = 1
     for task in task_pipeline:
         logger.info(f'Applying {task}')
         progress(i/(num_processes+1), desc=f"Applying {task}")
@@ -179,7 +163,23 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
     
     output_zip_file = join(output_dir,f'{basename}_output.zip')
     
-    progress(num_processes/(num_processes+1), desc=f"Create output archive")
+    progress(num_processes/(num_processes+1), desc=f"Generate output files")
+
+
+    logger.info(f'Saving output files in {output_dir}, {basename}')
+
+    #This save a version of the speech file with 16k, mono, 16bit
+    try:
+        speech_file = join(output_dir,f'{basename}.wav')
+        sf.write(speech_file, speech, sr)
+        download_speech_enable = True
+        download_speech_value = speech_file
+        download_speech_label = f"Download speech file"
+    except Exception as e:
+        logger.exception(f'Failed to save the speech file {speech_file}, {e}')
+        download_speech_enable = False
+        download_speech_value = None
+        download_speech_label = "Error in saving speech file"
     
     try:
         p = zip_files(out_textgrid, output_zip_file)
@@ -197,6 +197,8 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
         
      
     progress(1, desc="Processing completed..")
+
+    logger.info('Processing is completed')
     
     return ["Processing completed..", 
             gr.DownloadButton(label=download_data_label,
@@ -223,9 +225,12 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 #TODO: Process batch
 #TODO: Kaldi ASR
 #TODO: MMS ASR
+#TODO: Add parameters selection for ASR, SD, VAD
 #TODO: Rewrite the textgrid
 #TODO: TextGrid code to get the logger and use logging instead of print.
 #TODO: Add logging to other packages
+#TODO: Use .bin instead of ARPA in LM
+#TODO: ASR add the expected words
 
 
 
