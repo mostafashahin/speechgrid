@@ -1,0 +1,27 @@
+speechgrid:
+
+    speech_label: speech  # Label of speech intervals in SD, VAD
+    tasks:  # Current supported tasks
+        - ASR
+        - SD
+        - VAD
+
+    max_dur: 120  # Duration in seconds; speech longer than max_dur will be passed through VAD before ASR, even if VAD is not selected
+    
+    #May add here key for supported languages
+    speech_recognition:
+        lang: eng
+        lang_model: true
+        asr_model_path: Models/ASR/mms-1b-all
+        lm_model_path: Models/ASR/LM/ngram/4gram_big.arpa
+
+    speaker_diarization:
+        model_path: Models/SD/pyannote3.1/speaker-diarization-3.1
+        num_speakers: 0  # 0 means automatic detection
+        min_num_speakers: 0
+        max_num_speakers: 0
+
+    voice_activity_detection:
+        model_path: Models/VAD/pytorch_model.bin
+        min_duration_off: 0.09791355693027545  # Minimum duration of silence to consider a speaker pause
+        min_duration_on: 0.05537587440407595  # Minimum duration of activity to consider speech

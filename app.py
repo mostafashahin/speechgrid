@@ -1,28 +1,12 @@
-import sys
 import os
-from os.path import splitext, join
-from collections import defaultdict
-
-import librosa
-import soundfile as sf
-import torch
-
-
-import gradio as gr
-from gradio.components import Audio, Dropdown, Textbox, Image
-
-
-
-
-import txtgrid_master.TextGrid_Master as tm
-from core.utils import generate_file_basename, load_speech_file, zip_files
-from config import output_dir, MAX_DUR, ASR_MODEL, SPEECH_LABEL, LM_PATH, device
-from config import setup_logger
+import sys
 import logging
+import soundfile as sf
+import gradio as gr
 
-from tasks.sd import pyannote_sd
-from tasks.vad import pyannote_vad
-from tasks.asr import wav2vec_asr
+from speechgrid import SpeechGrid
+from config import setup_logger, output_dir
+from core.utils import generate_file_basename, load_speech_file, zip_files
 
 
 if len(sys.argv) == 2:
@@ -35,51 +19,16 @@ else:
 setup_logger()
 logger = logging.getLogger(__name__)
 
-def load_asr(params=None):
-    #TODO add to the asr class to read parameters and load the correct model? or a separate function
-    logger.info("Loading ASR Model...")
 
-    try:
-        asr_engine = wav2vec_asr.speech_recognition(ASR_MODEL, device= device, lm_model_path=LM_PATH) #This from parameters and has default one #If language not determine use language id
-    except:
-        logger.exception(f'Error loading asr model {ASR_MODEL}')
-        raise "Error in loading asr model"
+speech_grid = SpeechGrid(config_file='config.yaml')
+
+
+def process_file(speech_file, tasks=['SD', 'ASR'],
+                 n_exact_speakers = 0,
+                 n_min_speakers = 0,
+                 n_max_speakers = 0,
+                 progress=gr.Progress()):
     
-    return asr_engine
-
-
-
-def load_sd(params=None):
-    logger.info("Loading SD Model...")
-    
-    try:
-        diarizer = pyannote_sd.speaker_diar(device= device)
-    except Exception as e:
-        print(f'Error loading speaker diarization model')
-        raise f"Error in loading speaker diarization model {e}"
-    
-    return diarizer
-
-
-
-vad_params = {
-             'min_duration_off': 0.09791355693027545,
-             'min_duration_on': 0.05537587440407595
-             }
-
-def load_vad(params=None):
-    logger.info("Loading VAD Model...")
-    
-    model_path = 'Models/VAD/pytorch_model.bin'
-    try:
-        vad_pipeline = pyannote_vad.speech_detection(model_path, device= device, params=params)
-    except:
-        print(f'Error loading voice activity detection model {model_path}')
-        raise "Error in loading voice activity detection model"   
-    return vad_pipeline
-
-
-def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.Progress()):
     basename = generate_file_basename()
     
 
@@ -94,33 +43,15 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
         raise
     
     tasks = set(tasks)
+
     
-    task_pipeline = []
-    if len(tasks) == 1:
-        if 'ASR' in tasks and duration > MAX_DUR: #Add VAD task to split the speech file by sil
-            task_pipeline = ['VAD', 'ASR']
-        else:
-            task_pipeline = list(tasks)
-    elif set(tasks) == set(['SD', 'ASR']):
-        task_pipeline = ['SD', 'ASR']
-    elif set(tasks) == set(['VAD', 'ASR']):
-        task_pipeline = ['VAD', 'ASR']
-    elif set(tasks) == set(['VAD', 'ASR', 'SD']): #If both SD, VAD and ASR then ASR will be applied on SD output
-        task_pipeline = ['VAD', 'SD', 'ASR']
-    else:
-        task_pipeline = tasks #Only 'SD' and 'VAD' each one will be applied separetly
+    
+    task_pipeline = speech_grid.create_task_pipeline(tasks, duration)
 
     logger.info('Start processing, following tasks will be performed', ','.join(task_pipeline))
 
     #Loading task engines
-    if 'ASR' in task_pipeline:
-        asr_engine = load_asr()
-    
-    if 'SD' in task_pipeline:
-        diarizer = load_sd()
-        
-    if 'VAD' in task_pipeline:
-        vad_engine = load_vad(params=vad_params)
+    speech_grid.load_tasks(task_pipeline)
     
     out_textgrid = []
 
@@ -134,34 +65,41 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
         progress(i/(num_processes+1), desc=f"Applying {task}")
         i += 1
         if task == 'ASR':
-            texgrid_file = join(output_dir,f'{basename}_ASR.TextGrid')
+            asr_engine = speech_grid.loaded_tasks['ASR']
+            textgrid_file = os.path.join(output_dir,f'{basename}_ASR.TextGrid')
             if not out_textgrid:
-                dTiers_asr = asr_engine.process_speech(speech)
+                asr_engine.process_speech(speech)
             else:
                 input_textgrid = out_textgrid[-1]
-                dTiers_asr = asr_engine.process_intervals(speech, input_textgrid, sr = sr, offset_sec=0, speech_label = SPEECH_LABEL)
+                asr_engine.process_intervals(speech, input_textgrid, sr = sr, offset_sec=0, speech_label = speech_grid.speech_label)
             
-            tm.WriteTxtGrdFromDict(texgrid_file,dTiers_asr,0,duration)
-            out_textgrid.append(texgrid_file)
+            asr_engine.write_textgrid(textgrid_file)
+            out_textgrid.append(textgrid_file)
         
         elif task == 'VAD':
-            rttm_file = join(output_dir,f'{basename}_VAD.rttm')
-            texgrid_file = join(output_dir,f'{basename}_VAD.TextGrid')
-            vad_engine.DoVAD(speech,sr)
+            vad_engine = speech_grid.loaded_tasks['VAD']
+            rttm_file = os.path.join(output_dir,f'{basename}_VAD.rttm')
+            textgrid_file = os.path.join(output_dir,f'{basename}_VAD.TextGrid')
+            vad_engine.process_speech(speech,sr)
             vad_engine.write_rttm(rttm_file)
-            vad_engine.write_textgrid(texgrid_file, speech_label=SPEECH_LABEL)
-            out_textgrid.append(texgrid_file)
+            vad_engine.write_textgrid(textgrid_file, speech_label=speech_grid.speech_label)
+            out_textgrid.append(textgrid_file)
         
         elif task == 'SD':
-            rttm_file = join(output_dir,f'{basename}_SD.rttm')
-            texgrid_file = join(output_dir,f'{basename}_SD.TextGrid')
-            diarizer.diarize(speech=speech, sr=sr)
-            diarizer.write_rttm(rttm_file)
-            diarizer.write_textgrid(texgrid_file, speech_label=SPEECH_LABEL)
-            out_textgrid.append(texgrid_file)
+            sd_engine = speech_grid.loaded_tasks['SD']
+            rttm_file = os.path.join(output_dir,f'{basename}_SD.rttm')
+            textgrid_file = os.path.join(output_dir,f'{basename}_SD.TextGrid')
+            sd_engine.process_speech(speech=speech,
+                                     sr=sr,
+                                     n_exact_speakers = n_exact_speakers,
+                                     n_min_speakers = n_min_speakers,
+                                     n_max_speakers = n_max_speakers)
+            sd_engine.write_rttm(rttm_file)
+            sd_engine.write_textgrid(textgrid_file, speech_label=speech_grid.speech_label)
+            out_textgrid.append(textgrid_file)
     
     
-    output_zip_file = join(output_dir,f'{basename}_output.zip')
+    output_zip_file = os.path.join(output_dir,f'{basename}_output.zip')
     
     progress(num_processes/(num_processes+1), desc=f"Generate output files")
 
@@ -170,7 +108,7 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 
     #This save a version of the speech file with 16k, mono, 16bit
     try:
-        speech_file = join(output_dir,f'{basename}.wav')
+        speech_file = os.path.join(output_dir,f'{basename}.wav')
         sf.write(speech_file, speech, sr)
         download_speech_enable = True
         download_speech_value = speech_file
@@ -231,26 +169,75 @@ def process_file(speech_file, tasks=['SD', 'ASR'], parameters=None, progress=gr.
 #TODO: Add logging to other packages
 #TODO: Use .bin instead of ARPA in LM
 #TODO: ASR add the expected words
+#TODO: Consider control the offset in interval ASR
+#TODO: Add parameters of min silence duration #NEED TO WELL UNDERSTAND THESE PARAMETERS
+
+
+def reset_min_max(exact,min_v,max_v):
+  if exact > 0:
+      min_v = 0
+      max_v = 0
+  return exact, min_v, max_v
+
+def validate_min_max(exact, min_v, max_v):
+    if min_v > 0 or max_v > 0:
+        exact = 0
+        if min_v > max_v:
+            max_v = min_v
+    return exact, min_v, max_v
 
 
 
 with gr.Blocks(title="SpeechGrid", theme=gr.themes.Soft()) as gui:
 
-    record_audio = gr.Audio(sources=["microphone","upload"], type="filepath")
+    with gr.Tab('Main'):
 
-    tasks = gr.CheckboxGroup(choices=[("Speech to Text","ASR"), ("Speaker Separation","SD"),("Speech Detection","VAD")], label="Tasks", info="Apply the following tasks:")
-
-    process = gr.Button("Process Audio")
-
-    output_text = gr.Textbox(label='Progress', interactive=False)
-    with gr.Row():
-        with gr.Column():
-            d1 = gr.DownloadButton("Download output", visible=False)
-        with gr.Column():
-            d2 = gr.DownloadButton("Download speech file", visible=False)
-
-    process.click(process_file, inputs=[record_audio, tasks], outputs=[output_text, d1, d2])
+        record_audio = gr.Audio(sources=["microphone","upload"], type="filepath")
     
+        tasks = gr.CheckboxGroup(choices=[("Speech to Text","ASR"),
+                                          ("Speaker Separation","SD"),
+                                          ("Speech Detection","VAD")], 
+                                 label="Tasks",
+                                 info="Apply the following tasks:")
+            
     
+        process = gr.Button("Process Audio")
+    
+        output_text = gr.Textbox(label='Progress', interactive=False)
+        with gr.Row():
+            with gr.Column():
+                d1 = gr.DownloadButton("Download output", visible=False)
+            with gr.Column():
+                d2 = gr.DownloadButton("Download speech file", visible=False)
+    
+        
+        
+    with gr.Tab('Advanced Options'):
+        gr.Markdown(
+            """
+            ### Number of speakers
+            """)
+        with gr.Row():
+            n_exact = gr.Number(label='Exact')
+            n_min = gr.Number(label='Minimum')
+            n_max = gr.Number(label='Maximum')
+
+            n_exact.change(reset_min_max,
+                           inputs=[n_exact, n_min, n_max],
+                          outputs=[n_exact, n_min, n_max])
+            n_min.change(validate_min_max,
+                        inputs=[n_exact, n_min, n_max],
+                        outputs=[n_exact, n_min, n_max])
+            n_max.change(validate_min_max,
+                        inputs=[n_exact, n_min, n_max],
+                        outputs=[n_exact, n_min, n_max])
+    
+    process.click(process_file, 
+                      inputs=[record_audio, 
+                              tasks,
+                              n_exact,
+                              n_min,
+                              n_max],
+                      outputs=[output_text, d1, d2])
      
 gui.launch(share=shareable)

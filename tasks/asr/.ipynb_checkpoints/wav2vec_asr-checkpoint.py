@@ -2,9 +2,10 @@
 import txtgrid_master.TextGrid_Master as tm
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 import torch
+import librosa
 
 
-class speech_recognition:
+class SpeechRecognition:
     def __init__(self,model_id, device = torch.device('cpu'), lm_model_path=None, lang='eng'):
         self.device = device
         self.processor = Wav2Vec2Processor.from_pretrained(model_id)
@@ -20,7 +21,7 @@ class speech_recognition:
             try:
                 from tasks.asr import lm_decoder
                 vocab_dict = self.processor.tokenizer.get_vocab()
-                self.lm_decode = lm_decoder.ngram_decoder(vocab_dict, lm_model_path)
+                self.lm_decode = lm_decoder.NgramDecoder(vocab_dict, lm_model_path)
             except Exception as e:
                 print(f"Error in loading language model {lm_model_path} language not applied")
                 print(e)
@@ -43,11 +44,12 @@ class speech_recognition:
         return predicted_sentences
     
     def process_speech(self, speech, sr=16000):
-        dTiers_asr = {'words':([0],[len(speech)/16000],[self.recognize(speech)])}
-        return dTiers_asr
+        self.duration = librosa.get_duration(y=speech, sr=sr)
+        self.dTiers_asr = {'words':([0],[len(speech)/16000],[self.recognize(speech)])}
+        
     
     def process_intervals(self, speech, textgrid_file, sr=16000, offset_sec=0, speech_label = 'speech'):
-        #asr = recognizer('Models/ASR/wav2vec2-large-xlsr-53-english/')
+        self.duration = librosa.get_duration(y=speech, sr=sr)
         dTiers = tm.ParseTxtGrd(textgrid_file)
         dTiers_asr = {}
         for tier_name in dTiers.keys():
@@ -63,4 +65,9 @@ class speech_recognition:
                     #print(start_time, end_time, label)       
                 llabel.append(label)
             dTiers_asr[tier_name] = (dTiers[tier_name][0],dTiers[tier_name][1], llabel)
-        return dTiers_asr
+        self.dTiers_asr = dTiers_asr
+
+
+    def write_textgrid(self, textgrid_file):
+        tm.WriteTxtGrdFromDict(textgrid_file,self.dTiers_asr,0,self.duration)
+        

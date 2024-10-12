@@ -3,21 +3,21 @@ import torch
 from collections import defaultdict
 
 from txtgrid_master import TextGrid_Master as tm
-from pyannote.audio.pipelines import VoiceActivityDetection
+from pyannote.audio import pipelines
 from pyannote.audio import Model
 
 
 
 
-class speech_detection:
+class VoiceActivityDetection:
     def __init__(self,Model_path, device = torch.device('cpu'), params = None):
         self.device = device
         model = Model.from_pretrained(Model_path)
-        self.pipeline = VoiceActivityDetection(segmentation=model)
+        self.pipeline = pipelines.VoiceActivityDetection(segmentation=model)
         self.pipeline.instantiate(params)
         self.pipeline.to(device)
         
-    def DoVAD(self, speech, sr):
+    def process_speech(self, speech, sr):
         self.duration = librosa.get_duration(y=speech, sr=sr)
         speech = torch.from_numpy(speech)
         speech = speech.unsqueeze(0)

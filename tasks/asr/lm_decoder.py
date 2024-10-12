@@ -1,6 +1,6 @@
 from pyctcdecode import build_ctcdecoder
 
-class ngram_decoder:
+class NgramDecoder:
     def __init__(self,vocab_dict, lm_model_path, alpha=0.5, beta=1.0):
         sorted_vocab_dict = {k.lower(): v for k, v in sorted(vocab_dict.items(), key=lambda item: item[1])}
         self.labels = list(sorted_vocab_dict.keys())

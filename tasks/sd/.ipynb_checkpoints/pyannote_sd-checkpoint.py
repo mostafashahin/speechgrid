@@ -1,23 +1,37 @@
 from collections import defaultdict
-from txtgrid_master import TextGrid_Master as tm
+from os.path import join
+
 import librosa
-from pyannote.audio import Pipeline
 import torch
 
+from pyannote.audio import Pipeline
+
+from txtgrid_master import TextGrid_Master as tm
 
 
-class speaker_diar:
-    def __init__(self, device = torch.device('cpu')):
+
+class SpeakerDiarization:
+    def __init__(self, model_path, device = torch.device('cpu')):
         self.device = device
-        self.pipeline = Pipeline.from_pretrained("Models/speaker_diar/pyannote3.1/speaker-diarization-3.1/config.yaml")
+        self.pipeline = Pipeline.from_pretrained(join(model_path, 'config.yaml'))
         self.pipeline.to(device)
         
-    def diarize(self, speech, sr):
+    def process_speech(self,
+                       speech,
+                       sr,
+                       n_exact_speakers = 0,
+                       n_min_speakers = 0,
+                       n_max_speakers = 0):
         self.duration = librosa.get_duration(y=speech, sr=sr)
         speech = torch.from_numpy(speech)
         speech = speech.unsqueeze(0).to(self.device)
         audio = {"waveform": speech, "sample_rate": sr}
-        self.diarization = self.pipeline(audio)
+        if n_exact_speakers > 0: 
+            self.diarization = self.pipeline(audio, num_speakers=n_exact_speakers)
+        elif n_min_speakers > 0 or n_max_speakers > 0:
+            self.diarization = self.pipeline(audio, min_speakers=n_min_speakers, max_speakers=n_max_speakers)
+        else:
+            self.diarization = self.pipeline(audio)
     
     def write_rttm(self, rttm_file):
         with open(rttm_file, "w") as rttm:
