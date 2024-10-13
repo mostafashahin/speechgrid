@@ -19,20 +19,35 @@ class SpeechGrid:
         self.loaded_tasks = {}
         
 
+    def get_asr_available_lang(self):
+        return self.config['speechgrid']['speech_recognition']['avail_lang']
+    
+    def get_asr_lang(self):
+        return self.config['speechgrid']['speech_recognition']['lang']
+        
+    def set_asr_lang(self, lang):
+        self.config['speechgrid']['speech_recognition']['lang'] = lang
+
+    def get_lm_enable(self):
+        return self.config['speechgrid']['speech_recognition']['lang_model']
+
+    def set_lm_enable(self, is_enable):
+        self.config['speechgrid']['speech_recognition']['lang_model'] = is_enable
+    
     def load_asr(self):
         
         logger.info("Loading ASR Model...")
         asr_model_path = self.config['speechgrid']['speech_recognition']['asr_model_path']
         asr_model_path = os.path.join(os.getcwd(), asr_model_path)
 
-        lm_enable = self.config['speechgrid']['speech_recognition']['lang_model']
+        lm_enable = self.get_lm_enable()
 
         if lm_enable:
             lm_model_path = self.config['speechgrid']['speech_recognition']['lm_model_path']
         else:
             lm_model_path = None
 
-        asr_lang = self.config['speechgrid']['speech_recognition']['lang']
+        asr_lang = self.get_asr_lang()
         
         try:
             asr_engine = wav2vec_asr.SpeechRecognition(asr_model_path, 

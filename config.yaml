@@ -10,6 +10,8 @@ speechgrid:
     
     #May add here key for supported languages
     speech_recognition:
+        avail_lang:
+            English: eng
         lang: eng
         lang_model: true
         asr_model_path: Models/ASR/mms-1b-all

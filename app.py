@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 speech_grid = SpeechGrid(config_file='config.yaml')
 
-
+#Consider use dynamic arguments *args and **kwargs
 def process_file(speech_file, tasks=['SD', 'ASR'],
                  n_exact_speakers = 0,
                  n_min_speakers = 0,
@@ -171,6 +171,7 @@ def process_file(speech_file, tasks=['SD', 'ASR'],
 #TODO: ASR add the expected words
 #TODO: Consider control the offset in interval ASR
 #TODO: Add parameters of min silence duration #NEED TO WELL UNDERSTAND THESE PARAMETERS
+#TODO: Create set, get for speaker number
 
 
 def reset_min_max(exact,min_v,max_v):
@@ -215,7 +216,8 @@ with gr.Blocks(title="SpeechGrid", theme=gr.themes.Soft()) as gui:
     with gr.Tab('Advanced Options'):
         gr.Markdown(
             """
-            ### Number of speakers
+            ### Speaker Separation
+            Number of speakers
             """)
         with gr.Row():
             n_exact = gr.Number(label='Exact')
@@ -231,6 +233,21 @@ with gr.Blocks(title="SpeechGrid", theme=gr.themes.Soft()) as gui:
             n_max.change(validate_min_max,
                         inputs=[n_exact, n_min, n_max],
                         outputs=[n_exact, n_min, n_max])
+        gr.Markdown(
+            """
+            ### Speech to Text
+            """
+        )
+        with gr.Row():
+            avail_lang = [(k,v) for k,v in speech_grid.get_asr_available_lang().items()]
+            lang_drop = gr.Dropdown(label='Language', choices=avail_lang, value=speech_grid.get_asr_lang())
+            lang_drop.change(speech_grid.set_asr_lang,
+                            inputs=lang_drop)
+
+            is_lm_enabled = speech_grid.get_lm_enable()
+            lm_enable = gr.Checkbox(label='Enable Language Model', value=is_lm_enabled, interactive=True)
+            lm_enable.change(speech_grid.set_lm_enable,
+                            inputs=lm_enable)
     
     process.click(process_file, 
                       inputs=[record_audio, 
