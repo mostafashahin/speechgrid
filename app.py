@@ -51,6 +51,8 @@ speech_grid_interface = SpeechGridInterface(config_file='config.yaml')
 #TODO: Review the use of get and set, use @property instead or direct access
 #TODO: Add nemo diarization
 
+#TODO: May specify the min but max 0?!
+
 def reset_min_max(exact,min_v,max_v):
     if exact > 0:
         min_v = 0
@@ -68,7 +70,6 @@ def validate_min_max(exact, min_v, max_v):
 
 def audio_stat(audio_value):
     if audio_value:
-        print(audio_value)
         return gr.Button("Process Audio", interactive=True)
     else:
         return gr.Button("Process Audio", interactive=False)

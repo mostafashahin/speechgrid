@@ -16,8 +16,21 @@ logger = logging.getLogger(__name__)
 
 class SpeechGrid:
     def __init__(self, config_file):
-        with open(config_file, 'r') as file:
-            self.config = yaml.safe_load(file)
+        try:
+            with open(config_file) as f:
+                try:
+                    self.config = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    logger.error(f"Error parsing config file: {e}")
+                    raise
+        except FileNotFoundError as e:
+            logger.error(f"Config file not found: {e}")
+            raise
+        except OSError as e:
+            logger.error(f"File access error: {e}")
+            raise
+
+        
         self.available_tasks = self.config['speechgrid']['tasks']
         self.speech_label = self.config['speechgrid']['speech_label']
         self.max_dur = self.config['speechgrid']['max_dur']
@@ -201,7 +214,7 @@ class SpeechGridInterface(SpeechGrid):
         i = 1
         for task in task_pipeline:
             logger.info(f'Applying {task}...')
-            progress(i/(num_processes+1), desc=f"Applying {task}")
+            progress(i/(num_processes+1), desc=f"Applying {task}...")
             i += 1
             if task == 'ASR':
                 asr_engine = self.loaded_tasks['ASR']
