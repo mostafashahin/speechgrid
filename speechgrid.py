@@ -140,7 +140,7 @@ class SpeechGrid:
         elif set(selected_tasks) == set(['VAD', 'ASR', 'SD']): #If both SD, VAD and ASR then ASR will be applied on SD output
             task_pipeline = ['VAD', 'SD', 'ASR']
         else:
-            task_pipeline = tasks #Only 'SD' and 'VAD' each one will be applied separately
+            task_pipeline = selected_tasks #Only 'SD' and 'VAD' each one will be applied separately
 
         return task_pipeline
 
