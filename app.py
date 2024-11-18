@@ -32,7 +32,7 @@ else:
 #TODO: Process batch
 #TODO: Kaldi ASR
 #TODO: MMS ASR   ######DONE
-#TODO: Add parameters selection for ASR, SD, VAD
+#TODO: Add parameters selection for ASR, SD, VAD  #########IN PROGRESS
 #TODO: Rewrite the textgrid
 #TODO: TextGrid code to get the logger and use logging instead of print.
 #TODO: Add logging to other packages
@@ -40,14 +40,18 @@ else:
 #TODO: ASR add the expected words
 #TODO: Consider control the offset in interval ASR
 #TODO: Add parameters of min silence duration #NEED TO WELL UNDERSTAND THESE PARAMETERS
-#TODO: Create set, get for speaker number
-#TODO: Name of file as the uploaded file
+#TODO: Create set, get for speaker number  #####DONE
+#TODO: Name of file as the uploaded file   #####DONE
 #TODO: Make process enable after loading or recording ####DONE####
 #TODO: Use import tempfile to access the temp dir if need to do so
 #TODO: Review the use of get and set, use @property instead or direct access
 #TODO: Add nemo diarization
+#TODO: Add language Identification. If VAD or SD apply LI for each interval otherwise the whole speech file
 
 #TODO: May specify the min but max 0?!
+#TODO: In docker how to get the log?
+#TODO: Remove unused parts of config file
+
 
 def init_speech_grid_interface(config_file='config.yaml'):
     return SpeechGridInterface(config_file=config_file)
