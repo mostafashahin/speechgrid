@@ -1,7 +1,7 @@
 import yaml
 import logging
-import os
 import gradio as gr
+import os
 import soundfile as sf
 
 from config import output_dir, device
@@ -13,6 +13,10 @@ from tasks.asr import wav2vec_asr
 
 
 logger = logging.getLogger(__name__)
+
+
+
+
 
 class SpeechGrid:
     def __init__(self, config_file):
@@ -147,8 +151,6 @@ class SpeechGrid:
 
 
 
-
-
 class SpeechGridInterface(SpeechGrid):
     def __init__(self, config_file):
         super().__init__(config_file=config_file)
@@ -274,7 +276,7 @@ class SpeechGridInterface(SpeechGrid):
         
         task_pipeline = self.create_task_pipeline(tasks, duration)
     
-        logger.info(f'Start processing, following tasks will be performed on {basename} {','.join(task_pipeline)}')
+        logger.info(f"Start processing, following tasks will be performed on {basename} {','.join(task_pipeline)}")
     
         #Loading task engines
         self.load_tasks(task_pipeline)

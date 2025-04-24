@@ -24,6 +24,6 @@ speechgrid:
         max_num_speakers: 0
 
     voice_activity_detection:
-        model_path: Models/VAD/pytorch_model.bin
+        model_path: /media/unsw/17D1-7AB7/mostafa/speechgrid/Models/VAD/pytorch_model.bin
         min_duration_off: 0.09791355693027545  # Minimum duration of silence to consider a speaker pause
         min_duration_on: 0.05537587440407595  # Minimum duration of activity to consider speech

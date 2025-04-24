@@ -48,6 +48,7 @@ else:
 #TODO: Add nemo diarization
 
 #TODO: May specify the min but max 0?!
+#TODO: implement phonemizer
 
 def init_speech_grid_interface(config_file='config.yaml'):
     return SpeechGridInterface(config_file=config_file)
@@ -159,7 +160,7 @@ def create_gradio_interface(speech_grid_interface):
                           inputs=record_audio,
                           outputs=[output_text, d1, d2])
          
-    gui.queue().launch(share=shareable)
+    gui.queue().launch(share=shareable, server_name="0.0.0.0",server_port=9100)
 
 if __name__ == '__main__':
 
