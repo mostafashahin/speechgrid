@@ -1,3 +1,5 @@
 Models/ASR/LM/ngram/4gram_big.arpa filter=lfs diff=lfs merge=lfs -text
 Models/ASR/LM/ngram/4gram_big.arpa.gz filter=lfs diff=lfs merge=lfs -text
+Models/ASR/LM/ngram/4gram_small.arpa filter=lfs diff=lfs merge=lfs -text
+Models/ASR/LM/ngram/4gram_small.arpa.gz filter=lfs diff=lfs merge=lfs -text
 Models/ASR/LM/ngram/4gram_* filter=lfs diff=lfs merge=lfs -text
